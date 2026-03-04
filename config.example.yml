@@ -1,0 +1,38 @@
+informix:
+  host: "localhost"
+  port: 9089
+  server: "informix"
+  user: "informix"
+  password: "in4mix"
+  db_locale: "en_us.utf8"
+  client_locale: "en_us.utf8"
+  driver_options:
+    GL_DATE: "%d/%m/%Y"
+    GL_DATETIME: "%Y-%m-%d %H:%M:%S"
+    IFX_USE_STRENC: "true"
+
+descriptions:
+  stores_demo:
+    _description: "Demo database with example legacy entities"
+    customers:
+      _description: "Active customers"
+      columns:
+        customer_id: "Unique customer identifier"
+        customer_code: "Legacy customer code"
+        full_name: "Full name"
+        created_at: "Creation date"
+    orders:
+      _description: "Orders created by customers"
+      columns:
+        order_id: "Unique order identifier"
+        customer_id: "FK to customer"
+        order_date: "Order date"
+        amount: "Total amount"
+    order_items:
+      _description: "Order line details"
+      columns:
+        order_item_id: "Line item identifier"
+        order_id: "FK to order"
+        sku: "Product SKU"
+        quantity: "Ordered quantity"
+        price: "Unit price"

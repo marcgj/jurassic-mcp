@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local runtime config (contains credentials)
+config.yml
+config.test.yml
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

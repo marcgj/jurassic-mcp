@@ -1,0 +1,51 @@
+services:
+  informix:
+    image: icr.io/informix/informix-developer-database:latest
+    container_name: jurassic-informix
+    privileged: true
+    environment:
+      LICENSE: accept
+      INIT_FILE: init.sql
+    ports:
+      - "9088:9088"
+      - "9089:9089"
+    volumes:
+      - informix_data:/opt/ibm/data
+      - ./init-db/init.sql:/opt/ibm/config/init.sql:ro
+
+  informix-init:
+    image: jurassic-mcp-mcp-server
+    container_name: jurassic-informix-init
+    environment:
+      JURASSIC_MCP_CONFIG: /app/config.yml
+    depends_on:
+      informix:
+        condition: service_healthy
+    volumes:
+      - ./config.test.yml:/app/config.yml:ro
+      - ./init-db/init.sql:/work/init.sql:ro
+      - ./init-db/apply_init.py:/work/apply_init.py:ro
+    entrypoint:
+      - /app/.venv/bin/python
+      - /work/apply_init.py
+    restart: "no"
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jurassic-mcp-server
+    environment:
+      JURASSIC_MCP_CONFIG: /app/config.yml
+    volumes:
+      - ./config.test.yml:/app/config.yml:ro
+    depends_on:
+      informix:
+        condition: service_healthy
+      informix-init:
+        condition: service_completed_successfully
+    stdin_open: true
+    tty: true
+
+volumes:
+  informix_data:

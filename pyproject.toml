@@ -1,0 +1,20 @@
+[project]
+name = "jurassic-mcp"
+version = "0.1.0"
+description = "MCP server for IBM Informix database schema exploration and SQL validation"
+authors = [
+    { name = "marcgj", email = "mgaspjoval2002@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastmcp>=2.0.0",
+    "ibm_db>=3.2.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+jurassic-mcp = "jurassic_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"
