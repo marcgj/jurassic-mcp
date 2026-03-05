@@ -1,6 +1,7 @@
 informix:
   host: "localhost"
-  port: 9089
+  port: 9088
+  protocol: "onsoctcp"
   server: "informix"
   user: "informix"
   password: "in4mix"

@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS builder
+FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -20,7 +20,7 @@ COPY src ./src
 
 RUN uv sync --no-dev
 
-FROM python:3.13-slim
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -32,6 +32,6 @@ WORKDIR /app
 COPY --from=builder /app /app
 
 # IfxPy bundles onedb-odbc-driver under site-packages (Linux x64)
-ENV LD_LIBRARY_PATH="/app/.venv/lib/python3.13/site-packages/onedb-odbc-driver/lib:/app/.venv/lib/python3.13/site-packages/onedb-odbc-driver/lib/esql:/app/.venv/lib/python3.13/site-packages/onedb-odbc-driver/lib/cli:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="/app/.venv/lib/python3.11/site-packages/onedb-odbc-driver/lib:/app/.venv/lib/python3.11/site-packages/onedb-odbc-driver/lib/esql:/app/.venv/lib/python3.11/site-packages/onedb-odbc-driver/lib/cli:${LD_LIBRARY_PATH}"
 
 CMD ["jurassic-mcp"]

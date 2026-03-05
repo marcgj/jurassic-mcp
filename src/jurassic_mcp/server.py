@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from fastmcp import FastMCP
@@ -22,6 +24,27 @@ mcp = FastMCP("jurassic-mcp")
 
 # The config is injected at startup via ``init_server``.
 _config: AppConfig | None = None
+
+
+def _normalize_name(value: str, field: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError(f"'{field}' cannot be empty")
+    return normalized
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value).decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _to_json(value: Any) -> str:
+    return json.dumps(value, indent=2, ensure_ascii=False, default=_json_default)
 
 
 def init_server(config: AppConfig) -> None:
@@ -71,7 +94,7 @@ def list_databases() -> str:
             entry["description"] = desc
         result.append(entry)
 
-    return json.dumps(result, indent=2, ensure_ascii=False)
+    return _to_json(result)
 
 
 @mcp.tool(
@@ -88,7 +111,8 @@ def list_tables(database: str) -> str:
     and an optional user-provided description.
     """
     cfg = _cfg()
-    with connect(cfg.informix, database) as conn:
+    database_name = _normalize_name(database, "database")
+    with connect(cfg.informix, database_name) as conn:
         rows = _list_tables(conn)
 
     result: list[dict[str, Any]] = []
@@ -103,15 +127,19 @@ def list_tables(database: str) -> str:
             "owner": row.get("owner", "").strip()
             if isinstance(row.get("owner"), str)
             else row.get("owner"),
-            "num_columns": row.get("ncols"),
-            "num_rows": row.get("nrows"),
+            "num_columns": int(row.get("ncols", 0))
+            if row.get("ncols") is not None
+            else None,
+            "num_rows": int(row.get("nrows", 0))
+            if row.get("nrows") is not None
+            else None,
         }
-        desc = cfg.get_table_description(database, tabname)
+        desc = cfg.get_table_description(database_name, tabname)
         if desc:
             entry["description"] = desc
         result.append(entry)
 
-    return json.dumps(result, indent=2, ensure_ascii=False)
+    return _to_json(result)
 
 
 @mcp.tool(
@@ -130,11 +158,13 @@ def describe_table(database: str, table: str) -> str:
     column descriptions.
     """
     cfg = _cfg()
-    with connect(cfg.informix, database) as conn:
-        columns = _describe_table(conn, table)
+    database_name = _normalize_name(database, "database")
+    table_name = _normalize_name(table, "table")
+    with connect(cfg.informix, database_name) as conn:
+        columns = _describe_table(conn, table_name)
 
     # Enrich with user descriptions
-    col_descs = cfg.get_column_descriptions(database, table)
+    col_descs = cfg.get_column_descriptions(database_name, table_name)
     for col in columns:
         user_desc = col_descs.get(col["name"], "")
         if user_desc:
@@ -142,14 +172,15 @@ def describe_table(database: str, table: str) -> str:
 
     result: dict[str, Any] = {
         "table": table,
-        "database": database,
+        "database": database_name,
         "columns": columns,
     }
-    table_desc = cfg.get_table_description(database, table)
+    table_desc = cfg.get_table_description(database_name, table_name)
     if table_desc:
         result["description"] = table_desc
 
-    return json.dumps(result, indent=2, ensure_ascii=False)
+    result["table"] = table_name
+    return _to_json(result)
 
 
 @mcp.tool(
@@ -167,10 +198,12 @@ def list_indexes(database: str, table: str) -> str:
     and the columns they cover with sort direction.
     """
     cfg = _cfg()
-    with connect(cfg.informix, database) as conn:
-        indexes = _list_indexes(conn, table)
+    database_name = _normalize_name(database, "database")
+    table_name = _normalize_name(table, "table")
+    with connect(cfg.informix, database_name) as conn:
+        indexes = _list_indexes(conn, table_name)
 
-    return json.dumps(indexes, indent=2, ensure_ascii=False)
+    return _to_json(indexes)
 
 
 @mcp.tool(
@@ -188,10 +221,12 @@ def list_foreign_keys(database: str, table: str) -> str:
     delete rule, and the columns involved on both sides.
     """
     cfg = _cfg()
-    with connect(cfg.informix, database) as conn:
-        fks = _list_foreign_keys(conn, table)
+    database_name = _normalize_name(database, "database")
+    table_name = _normalize_name(table, "table")
+    with connect(cfg.informix, database_name) as conn:
+        fks = _list_foreign_keys(conn, table_name)
 
-    return json.dumps(fks, indent=2, ensure_ascii=False)
+    return _to_json(fks)
 
 
 @mcp.tool(
@@ -215,7 +250,8 @@ def validate_sql(database: str, sql: str) -> str:
     ``error`` message from Informix.
     """
     cfg = _cfg()
-    with connect(cfg.informix, database) as conn:
+    database_name = _normalize_name(database, "database")
+    with connect(cfg.informix, database_name) as conn:
         result = _validate_sql(conn, sql)
 
-    return json.dumps(result, indent=2, ensure_ascii=False)
+    return _to_json(result)

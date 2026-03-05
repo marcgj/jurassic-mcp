@@ -12,9 +12,11 @@ Includes tools to:
 
 ## Requirements
 
-- Python 3.13+
+- Python 3.11
 - `uv` installed
 - Access to an Informix instance
+
+This project is optimized for legacy Informix TCP/SQLI using `IfxPy` by default.
 
 ## Configuration
 
@@ -25,6 +27,13 @@ cp config.example.yml config.yml
 ```
 
 2. Edit `config.yml` with your host/port/credentials.
+
+For legacy remote Informix over TCP, set:
+
+```yaml
+informix:
+  protocol: "onsoctcp"
+```
 
 The server resolves the config path from:
 - `JURASSIC_MCP_CONFIG` (if set)

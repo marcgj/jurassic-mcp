@@ -5,12 +5,22 @@ description = "MCP server for IBM Informix database schema exploration and SQL v
 authors = [
     { name = "marcgj", email = "mgaspjoval2002@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "fastmcp>=2.0.0",
+    "IfxPy>=3.0.0",
     "ibm_db>=3.2.0",
     "pyyaml>=6.0",
+    "setuptools<58",
+    "wheel",
 ]
+
+[tool.uv]
+no-build-isolation-package = ["ifxpy"]
+
+[tool.uv.extra-build-dependencies]
+ifxpy = ["wheel"]
+
 
 [project.scripts]
 jurassic-mcp = "jurassic_mcp:main"

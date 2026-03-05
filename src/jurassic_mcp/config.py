@@ -19,6 +19,7 @@ class InformixConfig:
 
     host: str = "localhost"
     port: int = 9088
+    protocol: str = "onsoctcp"
     server: str = "informix"
     user: str = "informix"
     password: str = "in4mix"
@@ -131,6 +132,7 @@ def load_config(path: str | Path | None = None) -> AppConfig:
     informix = InformixConfig(
         host=str(ifx_raw.get("host", "localhost")),
         port=int(ifx_raw.get("port", 9088)),
+        protocol=str(ifx_raw.get("protocol", "onsoctcp")),
         server=str(ifx_raw.get("server", "informix")),
         user=str(ifx_raw.get("user", "informix")),
         password=str(ifx_raw.get("password", "in4mix")),

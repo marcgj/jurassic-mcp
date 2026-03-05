@@ -6,8 +6,13 @@ from typing import Any
 
 try:
     import IfxPy as ifx  # type: ignore[import-untyped]
-except ImportError:  # pragma: no cover - fallback for newer Python runtimes
-    import ibm_db as ifx  # type: ignore[import-untyped]
+except (
+    ImportError
+):  # pragma: no cover - fallback for package naming/runtime differences
+    try:
+        import ifxpy as ifx  # type: ignore[import-untyped]
+    except ImportError:  # pragma: no cover - fallback for newer Python runtimes
+        import ibm_db as ifx  # type: ignore[import-untyped]
 
 # ---------------------------------------------------------------------------
 # Informix coltype numeric code → human-readable name
@@ -146,7 +151,7 @@ def describe_table(conn, table: str) -> list[dict[str, Any]]:
         SELECT c.colname, c.colno, c.coltype, c.collength
         FROM syscolumns c
         INNER JOIN systables t ON c.tabid = t.tabid
-        WHERE t.tabname = ?
+        WHERE LOWER(t.tabname) = LOWER(?)
         ORDER BY c.colno
     """
     stmt = _ensure_stmt(ifx.prepare(conn, sql), sql)
@@ -175,7 +180,7 @@ def list_indexes(conn, table: str) -> list[dict[str, Any]]:
         SELECT c.colno, c.colname
         FROM syscolumns c
         INNER JOIN systables t ON c.tabid = t.tabid
-        WHERE t.tabname = ?
+        WHERE LOWER(t.tabname) = LOWER(?)
     """
     col_stmt = _ensure_stmt(ifx.prepare(conn, col_sql), col_sql)
     ifx.execute(col_stmt, (table,))
@@ -191,7 +196,7 @@ def list_indexes(conn, table: str) -> list[dict[str, Any]]:
                i.part13, i.part14, i.part15, i.part16
         FROM sysindexes i
         INNER JOIN systables t ON i.tabid = t.tabid
-        WHERE t.tabname = ?
+        WHERE LOWER(t.tabname) = LOWER(?)
     """
     idx_stmt = _ensure_stmt(ifx.prepare(conn, idx_sql), idx_sql)
     ifx.execute(idx_stmt, (table,))
@@ -235,7 +240,7 @@ def list_foreign_keys(conn, table: str) -> list[dict[str, Any]]:
         INNER JOIN systables t ON c.tabid = t.tabid
         INNER JOIN sysconstraints pc ON r.primary = pc.constrid
         INNER JOIN systables pt ON pc.tabid = pt.tabid
-        WHERE t.tabname = ?
+        WHERE LOWER(t.tabname) = LOWER(?)
     """
     stmt = _ensure_stmt(ifx.prepare(conn, sql), sql)
     ifx.execute(stmt, (table,))
