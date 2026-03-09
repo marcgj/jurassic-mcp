@@ -60,15 +60,35 @@ JURASSIC_MCP_CONFIG=./config.yml uv run jurassic-mcp
 
 ## Docker
 
-Build:
+### Option A — Pull from the registry (recommended, no compilation needed)
+
+```bash
+docker pull ghcr.io/marcgj/jurassic-mcp:latest
+docker run --rm -i \
+  -e JURASSIC_MCP_CONFIG=/app/config.yml \
+  -v $(pwd)/config.yml:/app/config.yml:ro \
+  ghcr.io/marcgj/jurassic-mcp:latest
+```
+
+Available tags: `latest` (main branch), `vX.Y.Z` (releases), and the SHA of each commit.
+
+### Option B — Load from tarball (GitHub Releases)
+
+1. Download the `.tar` file from the [releases page](https://github.com/marcgj/jurassic-mcp/releases)
+2. Load the image:
+
+```bash
+docker load -i jurassic-mcp-*.tar
+docker run --rm -i \
+  -e JURASSIC_MCP_CONFIG=/app/config.yml \
+  -v $(pwd)/config.yml:/app/config.yml:ro \
+  ghcr.io/marcgj/jurassic-mcp:<sha>
+```
+
+### Build locally
 
 ```bash
 docker build -t jurassic-mcp .
-```
-
-Run:
-
-```bash
 docker run --rm -i \
   -e JURASSIC_MCP_CONFIG=/app/config.yml \
   -v $(pwd)/config.yml:/app/config.yml:ro \
@@ -93,11 +113,11 @@ The script `init-db/init.sql` creates the `stores_demo` database and demo tables
 
 ## CI
 
-Workflow in `.github/workflows/build.yml`:
-- runs on every commit to `main`
-- builds the Docker image
-- exports a tarball
-- publishes it as a GitHub Actions artifact
+Workflow in [.github/workflows/build.yml](.github/workflows/build.yml):
+- runs on every commit to `main` and on `v*` tags
+- builds and pushes the Docker image to `ghcr.io/marcgj/jurassic-mcp`
+- exports a tarball and uploads it as a GitHub Actions artifact
+- on `v*` tags: creates a GitHub Release with the tarball attached
 
 ## MCP integration in VS Code/Copilot
 
