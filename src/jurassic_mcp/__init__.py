@@ -62,7 +62,7 @@ def _maybe_reexec_with_ifxpy_runtime() -> None:
 
 
 def main() -> None:
-    """Load configuration and run the MCP server over STDIO."""
+    """Load configuration and run the MCP server."""
     _maybe_reexec_with_ifxpy_runtime()
 
     from .config import load_config
@@ -70,4 +70,11 @@ def main() -> None:
 
     config = load_config()
     init_server(config)
-    mcp.run()
+
+    transport = os.environ.get("JURASSIC_MCP_TRANSPORT", "stdio").lower()
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+    else:
+        host = os.environ.get("JURASSIC_MCP_HOST", "0.0.0.0")
+        port = int(os.environ.get("JURASSIC_MCP_PORT", "8000"))
+        mcp.run(transport=transport, host=host, port=port)

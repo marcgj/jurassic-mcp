@@ -58,13 +58,49 @@ uv sync
 JURASSIC_MCP_CONFIG=./config.yml uv run jurassic-mcp
 ```
 
+## Transport modes
+
+The server supports two transport modes controlled by the `JURASSIC_MCP_TRANSPORT` env var:
+
+| Mode | Value | Use case |
+|------|-------|----------|
+| STDIO (default) | `stdio` | Local use — MCP client spawns the process |
+| HTTP | `streamable-http` | Remote/Docker — server listens on a port |
+| SSE (legacy) | `sse` | Legacy clients that only support SSE |
+
+Additional env vars for HTTP/SSE modes:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JURASSIC_MCP_HOST` | `0.0.0.0` | Bind address |
+| `JURASSIC_MCP_PORT` | `8000` | Listen port |
+
+The HTTP endpoint is `http://<host>:<port>/mcp` and the SSE endpoint is `http://<host>:<port>/sse`.
+
 ## Docker
+
+The Docker image defaults to `streamable-http` on port `8000`.
 
 ### Option A — Pull from the registry (recommended, no compilation needed)
 
 ```bash
 docker pull ghcr.io/marcgj/jurassic-mcp:latest
+```
+
+**HTTP mode** (recommended for remote access):
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e JURASSIC_MCP_CONFIG=/app/config.yml \
+  -v $(pwd)/config.yml:/app/config.yml:ro \
+  ghcr.io/marcgj/jurassic-mcp:latest
+```
+
+**STDIO mode** (for local MCP client spawning):
+
+```bash
 docker run --rm -i \
+  -e JURASSIC_MCP_TRANSPORT=stdio \
   -e JURASSIC_MCP_CONFIG=/app/config.yml \
   -v $(pwd)/config.yml:/app/config.yml:ro \
   ghcr.io/marcgj/jurassic-mcp:latest
@@ -75,11 +111,11 @@ Available tags: `latest` (main branch), `vX.Y.Z` (releases), and the SHA of each
 ### Option B — Load from tarball (GitHub Releases)
 
 1. Download the `.tar` file from the [releases page](https://github.com/marcgj/jurassic-mcp/releases)
-2. Load the image:
+2. Load and run:
 
 ```bash
 docker load -i jurassic-mcp-*.tar
-docker run --rm -i \
+docker run --rm -p 8000:8000 \
   -e JURASSIC_MCP_CONFIG=/app/config.yml \
   -v $(pwd)/config.yml:/app/config.yml:ro \
   ghcr.io/marcgj/jurassic-mcp:<sha>
@@ -89,7 +125,7 @@ docker run --rm -i \
 
 ```bash
 docker build -t jurassic-mcp .
-docker run --rm -i \
+docker run --rm -p 8000:8000 \
   -e JURASSIC_MCP_CONFIG=/app/config.yml \
   -v $(pwd)/config.yml:/app/config.yml:ro \
   jurassic-mcp
@@ -119,6 +155,110 @@ Workflow in [.github/workflows/build.yml](.github/workflows/build.yml):
 - exports a tarball and uploads it as a GitHub Actions artifact
 - on `v*` tags: creates a GitHub Release with the tarball attached
 
-## MCP integration in VS Code/Copilot
+## MCP client configuration
 
-Configure your MCP client to run the `jurassic-mcp` command in this project, making sure `JURASSIC_MCP_CONFIG` points to your `config.yml`.
+### HTTP mode (recommended for Docker / remote server)
+
+If the server is already running (e.g. via Docker with `-p 8000:8000`), point your client directly at the HTTP endpoint. No process spawning needed.
+
+**Claude Code** — add to `.claude/mcp.json` or `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "jurassic-mcp": {
+      "type": "http",
+      "url": "http://<host>:8000/mcp"
+    }
+  }
+}
+```
+
+**VS Code Copilot** — add to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "jurassic-mcp": {
+      "type": "http",
+      "url": "http://<host>:8000/mcp"
+    }
+  }
+}
+```
+
+Replace `<host>` with `localhost` if running locally, or the remote machine's IP/hostname.
+
+---
+
+### STDIO mode (local, client spawns the process)
+
+**Claude Code** — via Docker:
+
+```json
+{
+  "mcpServers": {
+    "jurassic-mcp": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "JURASSIC_MCP_TRANSPORT=stdio",
+        "-e", "JURASSIC_MCP_CONFIG=/app/config.yml",
+        "-v", "/absolute/path/to/config.yml:/app/config.yml:ro",
+        "ghcr.io/marcgj/jurassic-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+**Claude Code** — via `uv` (no Docker):
+
+```json
+{
+  "mcpServers": {
+    "jurassic-mcp": {
+      "command": "uv",
+      "args": ["run", "jurassic-mcp"],
+      "env": {
+        "JURASSIC_MCP_CONFIG": "/absolute/path/to/config.yml"
+      }
+    }
+  }
+}
+```
+
+**VS Code Copilot** — via Docker:
+
+```json
+{
+  "servers": {
+    "jurassic-mcp": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "JURASSIC_MCP_TRANSPORT=stdio",
+        "-e", "JURASSIC_MCP_CONFIG=/app/config.yml",
+        "-v", "${workspaceFolder}/config.yml:/app/config.yml:ro",
+        "ghcr.io/marcgj/jurassic-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+**VS Code Copilot** — via `uv` (no Docker):
+
+```json
+{
+  "servers": {
+    "jurassic-mcp": {
+      "command": "uv",
+      "args": ["run", "jurassic-mcp"],
+      "env": {
+        "JURASSIC_MCP_CONFIG": "${workspaceFolder}/config.yml"
+      }
+    }
+  }
+}
+```

@@ -22,14 +22,19 @@ WORKDIR /app
 COPY pyproject.toml .python-version ./
 COPY src ./src
 
-RUN CFLAGS="-Wno-error=unused-function" uv sync --no-dev
+RUN CFLAGS="-w -Wno-error -Wno-incompatible-pointer-types" uv sync --no-dev
 
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:${PATH}" \
-    JURASSIC_MCP_CONFIG=/app/config.yml
+    JURASSIC_MCP_CONFIG=/app/config.yml \
+    JURASSIC_MCP_TRANSPORT=streamable-http \
+    JURASSIC_MCP_HOST=0.0.0.0 \
+    JURASSIC_MCP_PORT=8000
+
+EXPOSE 8000
 
 WORKDIR /app
 

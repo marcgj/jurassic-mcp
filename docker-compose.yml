@@ -37,6 +37,11 @@ services:
     container_name: jurassic-mcp-server
     environment:
       JURASSIC_MCP_CONFIG: /app/config.yml
+      JURASSIC_MCP_TRANSPORT: streamable-http
+      JURASSIC_MCP_HOST: 0.0.0.0
+      JURASSIC_MCP_PORT: 8000
+    ports:
+      - "8000:8000"
     volumes:
       - ./config.test.yml:/app/config.yml:ro
     depends_on:
@@ -44,8 +49,6 @@ services:
         condition: service_healthy
       informix-init:
         condition: service_completed_successfully
-    stdin_open: true
-    tty: true
 
 volumes:
   informix_data:
