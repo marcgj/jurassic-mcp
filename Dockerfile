@@ -22,7 +22,7 @@ WORKDIR /app
 COPY pyproject.toml .python-version ./
 COPY src ./src
 
-RUN uv sync --no-dev
+RUN CFLAGS="-Wno-error=unused-function" uv sync --no-dev
 
 FROM python:3.11-slim
 
