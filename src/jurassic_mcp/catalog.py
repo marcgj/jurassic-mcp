@@ -4,15 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
-    import IfxPy as ifx  # type: ignore[import-untyped]
-except (
-    ImportError
-):  # pragma: no cover - fallback for package naming/runtime differences
-    try:
-        import ifxpy as ifx  # type: ignore[import-untyped]
-    except ImportError:  # pragma: no cover - fallback for newer Python runtimes
-        import ibm_db as ifx  # type: ignore[import-untyped]
+import IfxPy as ifx  # type: ignore[import-untyped]
 
 # ---------------------------------------------------------------------------
 # Informix coltype numeric code → human-readable name

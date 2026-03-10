@@ -4,9 +4,9 @@ import time
 from pathlib import Path
 
 try:
-    import ibm_db as ifx  # type: ignore[import-untyped]
+    import IfxPy as ifx  # type: ignore[import-untyped]
 except ImportError as exc:  # pragma: no cover
-    raise RuntimeError("ibm_db is required for init sidecar") from exc
+    raise RuntimeError("IfxPy is required for init sidecar") from exc
 
 from jurassic_mcp.config import load_config
 from jurassic_mcp.db import connect

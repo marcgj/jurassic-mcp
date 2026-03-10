@@ -75,6 +75,20 @@ class AppConfig:
         return tbl_desc.columns if tbl_desc else {}
 
 
+def _apply_env_overrides(informix: InformixConfig) -> None:
+    """Override InformixConfig fields from environment variables."""
+    if val := os.environ.get("INFORMIX_HOST"):
+        informix.host = val
+    if val := os.environ.get("INFORMIX_PORT"):
+        informix.port = int(val)
+    if val := os.environ.get("INFORMIX_USER"):
+        informix.user = val
+    if val := os.environ.get("INFORMIX_PASSWORD"):
+        informix.password = val
+    if val := os.environ.get("INFORMIX_SERVER"):
+        informix.server = val
+
+
 def _parse_descriptions(raw: dict[str, Any] | None) -> dict[str, DatabaseDescription]:
     """Parse the ``descriptions`` section of the YAML config."""
     result: dict[str, DatabaseDescription] = {}
@@ -115,7 +129,9 @@ def load_config(path: str | Path | None = None) -> AppConfig:
 
     if not path.exists():
         # Return defaults when no config file is present
-        return AppConfig()
+        cfg = AppConfig()
+        _apply_env_overrides(cfg.informix)
+        return cfg
 
     with open(path, encoding="utf-8") as fh:
         raw: dict[str, Any] = yaml.safe_load(fh) or {}
@@ -140,6 +156,7 @@ def load_config(path: str | Path | None = None) -> AppConfig:
         client_locale=str(ifx_raw.get("client_locale", "en_us.utf8")),
         driver_options=driver_options,
     )
+    _apply_env_overrides(informix)
 
     descriptions = _parse_descriptions(raw.get("descriptions"))
 
