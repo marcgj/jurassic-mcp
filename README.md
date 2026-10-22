@@ -118,6 +118,19 @@ descriptions:
 
 Connection errors include the SQLCODE and a hint (wrong server name/port, authentication, missing database, locale).
 
+## Skill for projects that use this MCP
+
+[skills/informix-jurassic-mcp/SKILL.md](skills/informix-jurassic-mcp/SKILL.md) is a Claude Code skill that makes the agent go to jurassic-mcp whenever a task touches the Informix databases. That covers SQL, 4GL/Genero code with embedded SQL, ERP entities and cryptic table/column names. With it the agent searches, describes and validates instead of guessing the schema, and offers to save what the user explains. It is written in Spanish, like the team's other skills.
+
+Install it per project (shared through that project's git) or for your user:
+
+```bash
+cp -r skills/informix-jurassic-mcp /path/to/project/.claude/skills/   # one project
+cp -r skills/informix-jurassic-mcp ~/.claude/skills/                  # all your projects
+```
+
+It assumes the server is registered as `jurassic-mcp` (tool names `mcp__jurassic-mcp__*`).
+
 ## Transport modes
 
 | Mode | `JURASSIC_MCP_TRANSPORT` | Use case |
