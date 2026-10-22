@@ -45,12 +45,41 @@ Descriptions are stored in `descriptions.yml` next to the config file (override 
 - `uv`, `gcc`, `curl`
 - Network access to an Informix instance (SQLI / `onsoctcp` listener, usually port 9088)
 
+## Quick start
+
+```bash
+./scripts/setup.sh                 # once: downloads the driver to vendor/, builds IfxPy, runs uv sync
+cp config.example.yml config.yml   # once: edit host/port/server/credentials
+uv run jurassic-mcp --http         # start a local server on http://127.0.0.1:8000/mcp
+```
+
+Or in VS Code press **F5** and pick **jurassic-mcp: HTTP (config.yml)** ([.vscode/launch.json](.vscode/launch.json)).
+
+On start it checks the Informix connection and prints everything needed to connect a client:
+
+```
+ Informix      user@host:9088 (server=...)  OK, 78 databases (agromodol, ...)
+ Config        /path/to/config.yml
+ Descriptions  /path/to/descriptions.yml
+ Endpoint      http://127.0.0.1:8000/mcp
+
+ Claude Code (run once, in any terminal):
+   claude mcp add --transport http jurassic-mcp http://127.0.0.1:8000/mcp
+
+ VS Code (.vscode/mcp.json):
+   {"servers": {"jurassic-mcp": {"type": "http", "url": "http://127.0.0.1:8000/mcp"}}}
+```
+
+Inside this repo you don't even need that: [.mcp.json](.mcp.json) (Claude Code) and [.vscode/mcp.json](.vscode/mcp.json) (VS Code) already point at `http://127.0.0.1:8000/mcp`.
+
+Options: `--http`, `--host`, `--port`, `--config`, `--no-check` (skip the connection check), `-v/--verbose` (log driver/config details, every MCP request and tool call with timing and result summary, every connection and every SQL statement; the VS Code launch configs enable it). Without `--http` it speaks STDIO, for clients that launch the process themselves (see [MCP client configuration](#mcp-client-configuration)); run by hand in a terminal, it prints the matching `claude mcp add` / VS Code snippet.
+
 ## Run locally
 
 ```bash
-./scripts/setup.sh                 # downloads the driver to vendor/, builds IfxPy, runs uv sync
-cp config.example.yml config.yml   # then edit host/port/server/credentials
-JURASSIC_MCP_CONFIG=./config.yml uv run jurassic-mcp
+JURASSIC_MCP_CONFIG=./config.yml uv run jurassic-mcp          # STDIO
+uv run jurassic-mcp --http --config ./config.yml --port 8000  # HTTP
+python -m jurassic_mcp --http                                 # same, from the venv
 ```
 
 Why the script: IfxPy compiles from source and needs the HCL OneDB ODBC driver (`libthcli.so`). Its own `setup.py` does not install the driver into the venv, and modern gcc (14+) fails without `-Wno-incompatible-pointer-types`. `setup.sh` handles both and is safe to re-run.

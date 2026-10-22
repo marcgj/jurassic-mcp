@@ -6,10 +6,12 @@ Library code here never writes to stdout (MCP STDIO transport).
 from __future__ import annotations
 
 import atexit
+import logging
 import os
 import re
 import tempfile
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generator
@@ -18,6 +20,8 @@ import IfxPy as ifx  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
     from .config import InformixConfig
+
+log = logging.getLogger("jurassic_mcp.db")
 
 
 # --- Process-wide environment setup ------------------------------------------
@@ -256,7 +260,15 @@ def connect(cfg: InformixConfig, database: str) -> Generator:
         with connect(cfg, "mydb") as conn:
             stmt = IfxPy.exec_immediate(conn, "SELECT ...")
     """
-    conn = _open(cfg, database)
+    target = f"{database}@{cfg.host}:{cfg.port} (server={cfg.server})"
+    start = time.perf_counter()
+    try:
+        conn = _open(cfg, database)
+    except ConnectionError as exc:
+        log.info("connect %s FAILED in %.0f ms: %s", target,
+                 (time.perf_counter() - start) * 1000, str(exc).splitlines()[0])
+        raise
+    log.debug("connect %s ok in %.0f ms", target, (time.perf_counter() - start) * 1000)
     try:
         yield conn
     finally:

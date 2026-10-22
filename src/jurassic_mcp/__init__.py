@@ -6,7 +6,10 @@ is the JSON-RPC channel. All diagnostics go to stderr.
 
 from __future__ import annotations
 
+import argparse
+import json
 import os
+import shlex
 import sys
 import sysconfig
 from pathlib import Path
@@ -129,11 +132,169 @@ def _maybe_reexec_with_ifxpy_runtime() -> None:
     env["LD_LIBRARY_PATH"] = os.pathsep.join([*missing, *current_parts])
     env["INFORMIXDIR"] = str(driver_dir)
     env["JURASSIC_MCP_SKIP_REEXEC"] = "1"
-    os.execvpe(sys.executable, [sys.executable, *sys.argv], env)
+    if Path(sys.argv[0]).name == "__main__.py":  # started as `python -m jurassic_mcp`
+        argv = [sys.executable, "-m", "jurassic_mcp", *sys.argv[1:]]
+    else:
+        argv = [sys.executable, *sys.argv]
+    os.execvpe(sys.executable, argv, env)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="jurassic-mcp",
+        description=(
+            "MCP server for IBM Informix. Without options it speaks MCP over "
+            "STDIO (for clients that launch it). Use --http to run it as a "
+            "local server you connect Claude Code / VS Code to."
+        ),
+    )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="serve streamable HTTP (same as JURASSIC_MCP_TRANSPORT=streamable-http)",
+    )
+    parser.add_argument("--host", help=f"HTTP bind address (default {_DEFAULT_HTTP_HOST})")
+    parser.add_argument("--port", type=int, help=f"HTTP port (default {_DEFAULT_HTTP_PORT})")
+    parser.add_argument("--config", help="config file (same as JURASSIC_MCP_CONFIG)")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="log startup details, every MCP request/tool call and every SQL "
+        "statement to stderr (same as JURASSIC_MCP_VERBOSE=1)",
+    )
+    parser.add_argument(
+        "--no-check",
+        action="store_true",
+        help="skip the Informix connection check at HTTP startup",
+    )
+    args = parser.parse_args()
+    # Options win over the environment; mirror them into it so the re-exec'd
+    # process (same argv) and load_config() see the same values.
+    if args.http:
+        os.environ["JURASSIC_MCP_TRANSPORT"] = "streamable-http"
+    if args.verbose:
+        os.environ["JURASSIC_MCP_VERBOSE"] = "1"
+    if args.host:
+        os.environ["JURASSIC_MCP_HOST"] = args.host
+    if args.port is not None:
+        os.environ["JURASSIC_MCP_PORT"] = str(args.port)
+    if args.config:
+        os.environ["JURASSIC_MCP_CONFIG"] = str(Path(args.config).expanduser().resolve())
+    return args
+
+
+def _check_connection(config) -> str:  # noqa: ANN001
+    """One-line Informix status for the startup summary (never raises)."""
+    from . import catalog
+    from .db import connect
+
+    ifx = config.informix
+    target = f"{ifx.user}@{ifx.host}:{ifx.port} (server={ifx.server})"
+    try:
+        with connect(ifx, "sysmaster") as conn:
+            dbs = catalog.list_databases(conn)
+    except Exception as exc:  # noqa: BLE001
+        first = str(exc).strip().splitlines()[0] if str(exc).strip() else repr(exc)
+        return f"{target}  FAILED: {first}"
+    names = ", ".join(d["name"] for d in dbs[:6]) + (", ..." if len(dbs) > 6 else "")
+    return f"{target}  OK, {len(dbs)} databases ({names})"
+
+
+def _print_summary(transport: str, url: str | None, config, status: str | None) -> None:  # noqa: ANN001
+    """Print what is needed to connect a client. stderr only (stdout is MCP)."""
+    project_root = Path(__file__).resolve().parents[2]
+    config_path = os.environ.get("JURASSIC_MCP_CONFIG")
+    config_abs = str(Path(config_path).resolve()) if config_path else "(defaults, no config file)"
+    lines = ["", "=" * 72, " jurassic-mcp is running", "=" * 72]
+    if status:
+        lines.append(f" Informix      {status}")
+    lines.append(f" Config        {config_abs}")
+    lines.append(f" Descriptions  {config.descriptions_file}")
+
+    if url:
+        vscode = {"servers": {"jurassic-mcp": {"type": "http", "url": url}}}
+        lines += [
+            f" Endpoint      {url}",
+            "",
+            " Claude Code (run once, in any terminal):",
+            f"   claude mcp add --transport http jurassic-mcp {url}",
+            "",
+            " VS Code (.vscode/mcp.json):",
+            "   " + json.dumps(vscode),
+        ]
+    elif (project_root / "pyproject.toml").is_file():
+        # STDIO: clients launch the process themselves.
+        args = ["run", "--directory", str(project_root), "jurassic-mcp"]
+        env = {"JURASSIC_MCP_CONFIG": config_abs} if config_path else {}
+        env_flags = " ".join(f"-e {k}={shlex.quote(v)}" for k, v in env.items())
+        vscode = {"servers": {"jurassic-mcp": {"command": "uv", "args": args, "env": env}}}
+        lines += [
+            "",
+            " Claude Code:",
+            f"   claude mcp add jurassic-mcp {env_flags} -- uv {shlex.join(args)}".replace("  ", " "),
+            "",
+            " VS Code (.vscode/mcp.json):",
+            "   " + json.dumps(vscode),
+        ]
+    lines += [
+        "",
+        " Then try:     /mcp__jurassic-mcp__autodiscover <database>   (Claude Code)",
+        "               /mcp.jurassic-mcp.autodiscover                (VS Code)",
+        "=" * 72,
+        "",
+    ]
+    print("\n".join(lines), file=sys.stderr, flush=True)
+
+
+def _log_startup_details(config, transport: str) -> None:  # noqa: ANN001
+    """Verbose mode: everything useful to diagnose a startup/connection issue."""
+    import asyncio
+    import importlib.metadata as md
+    import logging
+
+    from .server import mcp
+
+    log = logging.getLogger("jurassic_mcp")
+
+    def version(pkg: str) -> str:
+        try:
+            return md.version(pkg)
+        except md.PackageNotFoundError:
+            return "?"
+
+    ifx = config.informix
+    log.info("python %s · fastmcp %s · IfxPy %s · pid %d",
+             sys.version.split()[0], version("fastmcp"), version("IfxPy"), os.getpid())
+    log.info("executable %s", sys.executable)
+    log.info("INFORMIXDIR=%s", os.environ.get("INFORMIXDIR", "(unset)"))
+    log.info("LD_LIBRARY_PATH=%s", os.environ.get("LD_LIBRARY_PATH", "(unset)"))
+    log.info("informix host=%s port=%s server=%s protocol=%s user=%s password=%s",
+             ifx.host, ifx.port, ifx.server, ifx.protocol, ifx.user,
+             "***" if ifx.password else "(empty)")
+    log.info("informix db_locale=%s client_locale=%s connect_timeout=%ss driver_options=%s",
+             ifx.db_locale or "(default)", ifx.client_locale or "(default)",
+             ifx.connect_timeout, ifx.driver_options or "{}")
+    n_db = len(config.descriptions)
+    n_tab = sum(len(d.tables) for d in config.descriptions.values())
+    n_col = sum(len(t.columns) for d in config.descriptions.values() for t in d.tables.values())
+    exists = config.descriptions_file and Path(config.descriptions_file).exists()
+    log.info("descriptions: %d databases, %d tables, %d columns · file %s (%s)",
+             n_db, n_tab, n_col, config.descriptions_file, "exists" if exists else "will be created")
+    try:
+        tools = asyncio.run(mcp.list_tools())
+        prompts = asyncio.run(mcp.list_prompts())
+        log.info("tools: %s", ", ".join(t.name for t in tools))
+        log.info("prompts: %s", ", ".join(p.name for p in prompts))
+    except Exception as exc:  # noqa: BLE001
+        log.info("could not list tools/prompts: %s", exc)
+    log.info("transport=%s · verbose on: logging MCP requests, tool calls, connections and SQL",
+             transport)
 
 
 def main() -> None:
     """Load configuration and run the MCP server."""
+    args = _parse_args()
     _maybe_reexec_with_ifxpy_runtime()
 
     transport = os.environ.get("JURASSIC_MCP_TRANSPORT", "stdio").strip().lower()
@@ -145,6 +306,9 @@ def main() -> None:
 
     from .config import load_config
     from .server import init_server, mcp
+    from .verbose import VerboseMiddleware, is_verbose, setup_logging
+
+    setup_logging()
 
     config_source = os.environ.get("JURASSIC_MCP_CONFIG") or "./config.yml (default)"
     try:
@@ -152,9 +316,14 @@ def main() -> None:
     except Exception as exc:  # noqa: BLE001 - any config problem is fatal at startup
         _fail(f"Could not load configuration from {config_source}: {exc}")
     init_server(config)
+    if is_verbose():
+        _log_startup_details(config, transport)
+        mcp.add_middleware(VerboseMiddleware())  # after the self-listing above
 
     if transport == "stdio":
         _log(f"Starting (transport=stdio, config={config_source})")
+        if sys.stderr.isatty():  # started by hand: show how to register it
+            _print_summary(transport, None, config, None)
         mcp.run(transport="stdio")
         return
 
@@ -166,5 +335,10 @@ def main() -> None:
             raise ValueError
     except ValueError:
         _fail(f"Invalid JURASSIC_MCP_PORT={port_raw!r}; expected an integer 1-65535")
-    _log(f"Starting (transport={transport}, host={host}, port={port}, config={config_source})")
-    mcp.run(transport=transport, host=host, port=port)
+
+    shown_host = "127.0.0.1" if host in ("0.0.0.0", "::", "") else host
+    path = "/sse" if transport == "sse" else "/mcp"
+    url = f"http://{shown_host}:{port}{path}"
+    status = None if args.no_check else _check_connection(config)
+    _print_summary(transport, url, config, status)
+    mcp.run(transport=transport, host=host, port=port, show_banner=False)

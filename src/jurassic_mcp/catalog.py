@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
+import time
 from typing import Any
 
 import IfxPy as ifx  # type: ignore[import-untyped]
+
+log = logging.getLogger("jurassic_mcp.sql")
 
 # ---------------------------------------------------------------------------
 # Informix syscolumns.coltype decoding
@@ -211,6 +215,7 @@ def _fetch_all(stmt: Any) -> list[dict[str, Any]]:
 def _query(conn: Any, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
     """Prepare, execute, fetch all rows and free the statement."""
     stmt = None
+    start = time.perf_counter()
     try:
         stmt = ifx.prepare(conn, sql)
         if not stmt or isinstance(stmt, bool):
@@ -218,9 +223,21 @@ def _query(conn: Any, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, 
         ok = ifx.execute(stmt, params) if params else ifx.execute(stmt)
         if ok is False:
             raise RuntimeError(f"Informix execute failed: {_stmt_error()}")
-        return _fetch_all(stmt)
+        rows = _fetch_all(stmt)
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug("%s %s → %d rows, %.0f ms", _one_line(sql), list(params) if params else "",
+                      len(rows), (time.perf_counter() - start) * 1000)
+        return rows
+    except Exception as exc:
+        log.debug("%s %s → FAILED: %s", _one_line(sql), list(params) if params else "", exc)
+        raise
     finally:
         _free(stmt)
+
+
+def _one_line(sql: str, limit: int = 220) -> str:
+    text = " ".join(sql.split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 _PART_COLS = ", ".join(f"{{a}}.part{i} AS {{p}}{i}" for i in range(1, 17))
@@ -819,6 +836,7 @@ def validate_sql(conn: Any, sql: str) -> dict[str, Any]:
     stmt = None
     try:
         try:
+            log.debug("PREPARE only (validate_sql): %s", _one_line(statement))
             stmt = ifx.prepare(conn, statement)
         except Exception as exc:  # noqa: BLE001
             return {"valid": False, "error": str(exc), "stage": "prepare"}

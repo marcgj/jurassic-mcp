@@ -1,0 +1,42 @@
+{
+  // F5 / "Run and Debug": starts jurassic-mcp as a local HTTP MCP server and
+  // prints in the terminal how to connect Claude Code / VS Code to it.
+  // Requires ./scripts/setup.sh once (driver in vendor/ + .venv).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "jurassic-mcp: HTTP (config.yml)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "jurassic_mcp",
+      "args": ["--http", "--verbose", "--config", "${workspaceFolder}/config.yml"],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "INFORMIXDIR": "${workspaceFolder}/vendor/onedb-odbc-driver",
+        "LD_LIBRARY_PATH": "${workspaceFolder}/vendor/onedb-odbc-driver/lib:${workspaceFolder}/vendor/onedb-odbc-driver/lib/cli:${workspaceFolder}/vendor/onedb-odbc-driver/lib/esql",
+        "JURASSIC_MCP_SKIP_REEXEC": "1",
+        "JURASSIC_MCP_COLOR": "1"
+      }
+    },
+    {
+      "name": "jurassic-mcp: HTTP (docker compose test DB)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "jurassic_mcp",
+      "args": ["--http", "--verbose", "--port", "8001", "--config", "${workspaceFolder}/config.test.yml"],
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "INFORMIX_HOST": "127.0.0.1",
+        "INFORMIXDIR": "${workspaceFolder}/vendor/onedb-odbc-driver",
+        "LD_LIBRARY_PATH": "${workspaceFolder}/vendor/onedb-odbc-driver/lib:${workspaceFolder}/vendor/onedb-odbc-driver/lib/cli:${workspaceFolder}/vendor/onedb-odbc-driver/lib/esql",
+        "JURASSIC_MCP_SKIP_REEXEC": "1",
+        "JURASSIC_MCP_COLOR": "1",
+        "JURASSIC_MCP_DESCRIPTIONS": "${workspaceFolder}/data/descriptions.yml"
+      }
+    }
+  ]
+}
