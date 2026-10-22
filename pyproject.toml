@@ -7,20 +7,19 @@ authors = [
 ]
 requires-python = ">=3.11,<3.12"
 dependencies = [
-    "fastmcp>=2.0.0",
+    "fastmcp>=3.1,<4",
     "IfxPy>=3.0.0",
-    "ibm_db>=3.2.0",
     "pyyaml>=6.0",
-    "setuptools<58",
-    "wheel",
 ]
 
 [tool.uv]
-no-build-isolation-package = ["ifxpy"]
+# IfxPy 3.0.5 ships only a legacy setup.py that passes `use_2to3=True`, which
+# setuptools removed in v58. Constrain setuptools inside its isolated build env
+# (IfxPy is the only dependency built from source).
+build-constraint-dependencies = ["setuptools<58"]
 
 [tool.uv.extra-build-dependencies]
 ifxpy = ["wheel"]
-
 
 [project.scripts]
 jurassic-mcp = "jurassic_mcp:main"

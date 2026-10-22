@@ -1,16 +1,75 @@
+# jurassic-mcp configuration example.
+#
+# Copy to config.yml (git-ignored) and edit. The file is located through the
+# JURASSIC_MCP_CONFIG env var, falling back to ./config.yml. If
+# JURASSIC_MCP_CONFIG is set but points to a missing file, startup fails.
+#
+# Env overrides (applied after this file): INFORMIX_HOST, INFORMIX_PORT,
+# INFORMIX_SERVER, INFORMIX_USER, INFORMIX_PASSWORD.
+# Do NOT commit real credentials; prefer INFORMIX_PASSWORD for secrets.
+
 informix:
-  host: "localhost"
+  # Hostname / IP of the Informix server.
+  host: "db.example.internal"
+
+  # TCP port of the listener, or a service name from /etc/services
+  # (e.g. "sqlexec"). Typical: 9088 = onsoctcp (SQLI), 9089 = drsoctcp (DRDA).
   port: 9088
+
+  # DBSERVERNAME (or a DBSERVERALIASES entry) of the listener on that port.
+  # Find it on the server with: onstat -g dis   or in $INFORMIXDIR/etc/sqlhosts.
+  server: "ol_myserver"
+
+  # "onsoctcp" = legacy TCP/SQLI (default, what IfxPy expects).
+  # "drsoctcp" = DRDA; usually a separate listener/port (9089 on the
+  # developer image) and a different server alias (e.g. ol_myserver_dr).
   protocol: "onsoctcp"
-  server: "informix"
-  user: "informix"
-  password: "in4mix"
-  db_locale: "en_us.utf8"
-  client_locale: "en_us.utf8"
+
+  user: "readonly_user"
+  password: "change-me"
+
+  # Locales. Empty (default) = not sent, driver/server defaults apply.
+  # Set db_locale when the database was not created with the default locale
+  # (otherwise you get error -23197). Find a database's locale with:
+  #   SELECT dbs_dbsname, dbs_collate FROM sysmaster:sysdbslocale;
+  # e.g. dbs_collate "en_US.819" -> db_locale: "en_us.819",
+  #      "en_US.57372" -> "en_us.utf8".
+  # client_locale usually matches db_locale (or en_us.utf8 for UTF-8 clients).
+  db_locale: ""
+  client_locale: ""
+
+  # Seconds to wait for a connection (exported as INFORMIXCONTIME).
+  # INFORMIXCONRETRY defaults to 0; set it in driver_options if needed.
+  connect_timeout: 10
+
+  # Free-form Informix environment settings, exported before connecting.
+  # Values here OVERRIDE the same variables inherited from the process env.
+  # Some (GL_DATE, GL_DATETIME, DBDATE ...) are only honoured as env vars.
   driver_options:
     GL_DATE: "%d/%m/%Y"
     GL_DATETIME: "%Y-%m-%d %H:%M:%S"
-    IFX_USE_STRENC: "true"
+    # DBDATE: "DMY4/"
+    # INFORMIXCONRETRY: "1"
+
+# Optional human-readable annotations returned by the schema tools. They help
+# AI clients understand cryptic legacy names.
+#
+#   descriptions:
+#     <database>:
+#       _description: "..."            # database description
+#       <table>:
+#         _description: "..."          # table description
+#         columns:
+#           <column>: "..."            # column description
+#
+# Names are matched case-insensitively (keys are lower-cased). Quote keys
+# that YAML would turn into booleans/numbers ("on", "yes", "no", "y", "n").
+
+# Where save_descriptions / the `autodiscover` prompt store descriptions.
+# Same format as `descriptions` below and overrides it. Relative paths are
+# resolved next to this file. Default: descriptions.yml next to this file.
+# Env override: JURASSIC_MCP_DESCRIPTIONS.
+# descriptions_file: descriptions.yml
 
 descriptions:
   stores_demo:
@@ -26,14 +85,13 @@ descriptions:
       _description: "Orders created by customers"
       columns:
         order_id: "Unique order identifier"
-        customer_id: "FK to customer"
+        customer_id: "FK to customers.customer_id"
         order_date: "Order date"
         amount: "Total amount"
-    order_items:
-      _description: "Order line details"
+        ord_sts: "Status code: P = pending, S = shipped, X = cancelled"
+    artmae:
+      _description: "Item master (legacy name: 'articulos maestro')"
       columns:
-        order_item_id: "Line item identifier"
-        order_id: "FK to order"
-        sku: "Product SKU"
-        quantity: "Ordered quantity"
-        price: "Unit price"
+        am_cod: "Item code / SKU"
+        am_pvp: "Retail price, VAT excluded"
+        "am_baja": "Discontinued flag (S/N)"

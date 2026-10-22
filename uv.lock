@@ -2,6 +2,9 @@ version = 1
 revision = 3
 requires-python = "==3.11.*"
 
+[manifest]
+build-constraints = [{ name = "setuptools", specifier = "<58" }]
+
 [[package]]
 name = "aiofile"
 version = "3.9.0"
@@ -342,20 +345,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ibm-db"
-version = "3.2.8"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e9/62/a60f0347b7a316cf60585334f7f13015c8aa9543b312ab00c12b2374f11d/ibm_db-3.2.8.tar.gz", hash = "sha256:2e0e59a8a94f2c020c4c62642bb239849dd7f35b6a7bb2f5018b8b67830002bd", size = 269747, upload-time = "2025-12-07T14:11:55.478Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d8/49/57c5c863fa3731152b1421657c3e26ae02c2c2badf285aa6489db0af59ac/ibm_db-3.2.8-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:51a84481675410b52cebd3ca0f59778d42e11513644602bf6524340264103ecd", size = 24181642, upload-time = "2025-12-07T14:10:15.747Z" },
-    { url = "https://files.pythonhosted.org/packages/85/c4/a3ff3b405700acc6d00476bbb6c933052e8987cf638397d69b999c52b93a/ibm_db-3.2.8-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:22a8c8d602aef59308a51f535b72e6f73a939054d3e8fa36c3adec224a70c416", size = 20362481, upload-time = "2025-12-07T14:10:18.081Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/10/da394fa341fd915e1f9bb3835e7f6027ba55810cbbed517ed1e84787437b/ibm_db-3.2.8-cp311-cp311-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:3138b10becbe3b0134a82b6453021ef7e7775fe01b38cc831bed3371d5759141", size = 40545122, upload-time = "2025-12-07T14:10:20.958Z" },
-    { url = "https://files.pythonhosted.org/packages/0a/9e/1a7c7e699486bd078a4effc554cb0d2dcf32615d0d1d2b60bb7c3844c771/ibm_db-3.2.8-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:df5f9c076e29afb82c5a2f3fe8b2e112ae916c2eb0c4a729c0b2d23e78b3fb97", size = 43865764, upload-time = "2025-12-07T14:10:23.97Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/d5/25124cbfe6cec3516e0a95e9c134c6d51858c6401a15a3ae65677e32be01/ibm_db-3.2.8-cp311-cp311-win32.whl", hash = "sha256:afd0eb3d326c4cd61f20452b601ed909faddf2b996c3b07619e7d535a52fdbb8", size = 24580320, upload-time = "2025-12-07T14:10:26.978Z" },
-    { url = "https://files.pythonhosted.org/packages/11/89/273907fe30080fda9d2169add90e7945441214eac03b6c8faa1696f256f1/ibm_db-3.2.8-cp311-cp311-win_amd64.whl", hash = "sha256:d19626df230090d03c2e99262d7474a9f0f971ce8458969e2a4a96f8723c3669", size = 28721530, upload-time = "2025-12-07T14:10:29.618Z" },
-]
-
-[[package]]
 name = "idna"
 version = "3.11"
 source = { registry = "https://pypi.org/simple" }
@@ -483,21 +472,15 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
-    { name = "ibm-db" },
     { name = "ifxpy" },
     { name = "pyyaml" },
-    { name = "setuptools" },
-    { name = "wheel" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmcp", specifier = ">=2.0.0" },
-    { name = "ibm-db", specifier = ">=3.2.0" },
+    { name = "fastmcp", specifier = ">=3.1,<4" },
     { name = "ifxpy", specifier = ">=3.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "setuptools", specifier = "<58" },
-    { name = "wheel" },
 ]
 
 [[package]]
@@ -905,15 +888,6 @@ wheels = [
 ]
 
 [[package]]
-name = "setuptools"
-version = "57.5.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/20/f7/205a71cc9cc68f23afd9f3083002d0fb0a8c2277baf41a528395552e13c0/setuptools-57.5.0.tar.gz", hash = "sha256:d9d3266d50f59c6967b9312844470babbdb26304fe740833a5f8d89829ba3a24", size = 2141727, upload-time = "2021-09-04T15:12:23.852Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/b9/71687c5d2034c863db1db2e0704f5e27581ff3cb44d7f293968c5e08ceb3/setuptools-57.5.0-py3-none-any.whl", hash = "sha256:60d78588f15b048f86e35cdab73003d8b21dd45108ee61a6693881a427f22073", size = 819294, upload-time = "2021-09-04T15:12:22.026Z" },
-]
-
-[[package]]
 name = "sse-starlette"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1031,18 +1005,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a5/8f/aea9c71cc92bf9b6cc0f7f70df8f0b420636b6c96ef4feee1e16f80f75dd/websockets-16.0-pp311-pypy311_pp73-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0298d07ee155e2e9fda5be8a9042200dd2e3bb0b8a38482156576f863a9d457c", size = 176968, upload-time = "2026-01-10T09:23:41.031Z" },
     { url = "https://files.pythonhosted.org/packages/9a/3f/f70e03f40ffc9a30d817eef7da1be72ee4956ba8d7255c399a01b135902a/websockets-16.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:a653aea902e0324b52f1613332ddf50b00c06fdaf7e92624fbf8c77c78fa5767", size = 178735, upload-time = "2026-01-10T09:23:42.259Z" },
     { url = "https://files.pythonhosted.org/packages/6f/28/258ebab549c2bf3e64d2b0217b973467394a9cea8c42f70418ca2c5d0d2e/websockets-16.0-py3-none-any.whl", hash = "sha256:1637db62fad1dc833276dded54215f2c7fa46912301a24bd94d45d46a011ceec", size = 171598, upload-time = "2026-01-10T09:23:45.395Z" },
-]
-
-[[package]]
-name = "wheel"
-version = "0.46.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/89/24/a2eb353a6edac9a0303977c4cb048134959dd2a51b48a269dfc9dde00c8a/wheel-0.46.3.tar.gz", hash = "sha256:e3e79874b07d776c40bd6033f8ddf76a7dad46a7b8aa1b2787a83083519a1803", size = 60605, upload-time = "2026-01-22T12:39:49.136Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/22/b76d483683216dde3d67cba61fb2444be8d5be289bf628c13fc0fd90e5f9/wheel-0.46.3-py3-none-any.whl", hash = "sha256:4b399d56c9d9338230118d705d9737a2a468ccca63d5e813e2a4fc7815d8bc4d", size = 30557, upload-time = "2026-01-22T12:39:48.099Z" },
 ]
 
 [[package]]

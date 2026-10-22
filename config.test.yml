@@ -1,0 +1,55 @@
+# Config for the docker compose test environment ONLY.
+# Credentials are the public defaults of the Informix developer image.
+# For real servers copy config.example.yml to config.yml (git-ignored).
+informix:
+  host: "informix"          # compose service name
+  port: 9088                # onsoctcp listener of the developer image
+  server: "informix"        # DBSERVERNAME of the developer image
+  protocol: "onsoctcp"
+  user: "informix"
+  password: "in4mix"
+  db_locale: ""             # empty = driver/server default
+  client_locale: ""
+  connect_timeout: 10       # seconds (INFORMIXCONTIME)
+  driver_options: {}
+
+descriptions:
+  stores_demo:
+    _description: "Demo database created by init-db/init.sql (legacy-style schema)"
+    tabgen:
+      _description: "Generic code table: one row per (family, code) pair"
+      columns:
+        tg_tip: "Code family, e.g. FAM = item family, OSTS = order status"
+        tg_cod: "Code within the family"
+        tg_des: "Human-readable meaning of the code"
+    artmae:
+      _description: "Item (article) master"
+      columns:
+        am_cod: "Item code / SKU"
+        am_des: "Item description"
+        am_fam: "Item family; see tabgen where tg_tip = 'FAM'"
+        am_pvp: "Retail sale price (PVP), VAT excluded"
+        am_baja: "Discontinued flag: 'S' = discontinued, 'N' = active"
+    customers:
+      _description: "Customers"
+      columns:
+        customer_id: "Surrogate key (SERIAL)"
+        customer_code: "Legacy customer code shown to users, unique"
+        full_name: "Customer legal name"
+        created_at: "Registration timestamp"
+    orders:
+      _description: "Order headers"
+      columns:
+        order_id: "Surrogate key (SERIAL)"
+        customer_id: "FK to customers.customer_id"
+        order_date: "Order date"
+        amount: "Order total"
+        ord_sts: "Order status; see tabgen where tg_tip = 'OSTS' (P/S/X)"
+    order_items:
+      _description: "Order lines"
+      columns:
+        order_item_id: "Surrogate key (SERIAL)"
+        order_id: "FK to orders.order_id"
+        sku: "FK to artmae.am_cod"
+        quantity: "Ordered quantity"
+        price: "Unit price at order time"

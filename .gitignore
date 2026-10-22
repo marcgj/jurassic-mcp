@@ -11,7 +11,16 @@ wheels/
 
 # Local runtime config (contains credentials)
 config.yml
-config.test.yml
+# config.test.yml is the committed docker compose test config (no real secrets)
+!config.test.yml
+
+# Descriptions learned via save_descriptions/autodiscover (schema knowledge
+# of real databases; keep out of the repo)
+descriptions.yml
+data/
+
+# Downloaded Informix client driver (scripts/setup.sh)
+vendor/
 
 # Tooling
 .pytest_cache/

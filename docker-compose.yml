@@ -1,24 +1,57 @@
+# Local test environment: Informix developer edition + init sidecar + MCP server.
+#
+#   docker compose up --build            # first run creates stores_demo
+#   FORCE_REINIT=1 docker compose up     # drop & recreate stores_demo
+#   docker compose down -v               # wipe the Informix data volume
+#
+# Host ports are bound to 127.0.0.1 only. The Informix credentials below
+# (informix / in4mix) are the developer image defaults - test use only.
+name: jurassic-mcp
+
 services:
   informix:
-    image: icr.io/informix/informix-developer-database:latest
+    # Pinned tag (see https://icr.io/informix/informix-developer-database).
+    # Change to another published tag if this one is not available to you.
+    image: icr.io/informix/informix-developer-database:14.10.FC9W1DE
     container_name: jurassic-informix
+    # The IBM docs run this image with --privileged (kernel shm/sem tuning).
     privileged: true
     environment:
       LICENSE: accept
-      INIT_FILE: init.sql
     ports:
-      - "9088:9088"
-      - "9089:9089"
+      - "127.0.0.1:9088:9088"   # onsoctcp (SQLI)  -> DBSERVERNAME informix
+      - "127.0.0.1:9089:9089"   # drsoctcp (DRDA)  -> informix_dr
     volumes:
       - informix_data:/opt/ibm/data
-      - ./init-db/init.sql:/opt/ibm/config/init.sql:ro
+    healthcheck:
+      # Healthy = server On-Line AND sysmaster queryable (sysmaster is built
+      # a while after the server first reports On-Line on a fresh volume).
+      test:
+        - CMD-SHELL
+        - >-
+          bash -lc '
+          [ -f /opt/ibm/scripts/informix_inf.env ] && . /opt/ibm/scripts/informix_inf.env >/dev/null 2>&1;
+          export INFORMIXDIR="$${INFORMIXDIR:-/opt/ibm/informix}";
+          export INFORMIXSERVER="$${INFORMIXSERVER:-informix}";
+          export PATH="$$INFORMIXDIR/bin:$$PATH";
+          onstat - 2>/dev/null | grep -q "On-Line" &&
+          echo "SELECT COUNT(*) FROM systables WHERE tabid = 1;" | dbaccess sysmaster - >/dev/null 2>&1'
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      start_period: 180s
 
   informix-init:
-    image: jurassic-mcp-mcp-server
+    # Reuses the image built by the mcp-server service (it contains IfxPy +
+    # jurassic_mcp). `docker compose up` builds every image before starting
+    # any container, so the tag exists by the time this runs.
+    image: jurassic-mcp:local
+    pull_policy: never
     container_name: jurassic-informix-init
     environment:
       JURASSIC_MCP_CONFIG: /app/config.yml
-      INFORMIX_HOST: informix
+      INIT_SQL: /work/init.sql
+      FORCE_REINIT: ${FORCE_REINIT:-0}
     depends_on:
       informix:
         condition: service_healthy
@@ -26,31 +59,33 @@ services:
       - ./config.test.yml:/app/config.yml:ro
       - ./init-db/init.sql:/work/init.sql:ro
       - ./init-db/apply_init.py:/work/apply_init.py:ro
-    entrypoint:
-      - /app/.venv/bin/python
-      - /work/apply_init.py
+    entrypoint: ["/app/.venv/bin/python", "/work/apply_init.py"]
     restart: "no"
 
   mcp-server:
     build:
       context: .
       dockerfile: Dockerfile
+    image: jurassic-mcp:local
     container_name: jurassic-mcp-server
     environment:
       JURASSIC_MCP_CONFIG: /app/config.yml
       JURASSIC_MCP_TRANSPORT: streamable-http
       JURASSIC_MCP_HOST: 0.0.0.0
-      JURASSIC_MCP_PORT: 8000
-      INFORMIX_HOST: informix
+      JURASSIC_MCP_PORT: "8000"
+      # Descriptions saved by save_descriptions / autodiscover persist here.
+      JURASSIC_MCP_DESCRIPTIONS: /app/data/descriptions.yml
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./config.test.yml:/app/config.yml:ro
+      - ./data:/app/data
     depends_on:
       informix:
         condition: service_healthy
       informix-init:
         condition: service_completed_successfully
+    restart: unless-stopped
 
 volumes:
   informix_data:

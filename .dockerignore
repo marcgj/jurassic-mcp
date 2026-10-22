@@ -1,0 +1,14 @@
+# Never send real configs (credentials) to the build context.
+config*.yml
+!config.example.yml
+!config.test.yml
+
+.venv/
+descriptions*.yml
+data/
+vendor/
+.git/
+.github/
+.vscode/
+**/__pycache__/
+*.pyc
